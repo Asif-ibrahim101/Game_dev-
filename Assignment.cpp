@@ -15,16 +15,35 @@ int main()
 
 
 	/**** Set up your scene here ****/
+
+	//floor
 	IMesh* floorMesh = myEngine->LoadMesh("Floor.X");
 	IModel* floor = floorMesh->CreateModel();
 
+	//sky
 	IMesh* skyBoxMesh = myEngine->LoadMesh("Skybox_Hell.x");
 	IModel* skyBox = skyBoxMesh->CreateModel(0, -1000, 0);
 
 
+	//Blocks
+	float xPos = -45;
+	float YPos = 4;
+	float ZPos = 120.0;
+	const int BlockArray_length = 10;
+
+	IMesh* blockMesh = myEngine->LoadMesh("Block.x");
+	IModel* BlockModels[BlockArray_length];
+
+	//positioning all the models
+	for (int i = 0; i < BlockArray_length; i++) {
+		BlockModels[i] = blockMesh->CreateModel(xPos, YPos, ZPos);
+		xPos += 12;
+	};
+
 	//Camera setup
 	ICamera* mycamera;
-	mycamera = myEngine->CreateCamera(ManualCamera, 10, 30, -60);
+	mycamera = myEngine->CreateCamera(ManualCamera, 0, 30, -60);
+	mycamera->MoveX(10);
 
 	// The main game loop, repeat until engine is stopped
 	while (myEngine->IsRunning())
