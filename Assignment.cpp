@@ -72,8 +72,8 @@ int main()
 	const int Colllision_lenght = 10;
 
 	IMesh* blockMesh = myEngine->LoadMesh("Block.x");
-	IModel* BlockModels[BlockArray_length];
-	//IModel* BlockCol[Colllision_lenght];
+	IModel* BlockModels[BlockArray_length] = { false };
+	bool BlockHits[BlockArray_length] = { true };
 
 	//positioning all the models
 	for (int i = 0; i < BlockArray_length; i++) {
@@ -94,15 +94,18 @@ int main()
 	//rotation of the marble
 	float rotation = 0.0f;
 	const float Rotation_limmit = 50.0f;
-	const float Rotation_speed = KGameSpeed / 4;
+	const float Rotation_speed = KGameSpeed / 6;
 
 
 	//radius of the spheres
-	float radius_marble = 2.00;
-	float radius_block = 4.00;
+	float radius_marble = 2.0f;
+	float radius_block = 6.0f;
 
 	//maximum distance of the marble
 	const float Max  = 200.0f;
+
+	//for counting amount of hit 
+	int Hit = 0;
 
 	// The main game loop, repeat until engine is stopped
 	while (myEngine->IsRunning())
@@ -114,7 +117,6 @@ int main()
 		float OldX = marble->GetX();
 		float OldZ = marble->GetZ();
 
-		 
 		//moving the marble and starting Ready State
 		if (myEngine->KeyHeld(Key_Z) && rotation < Rotation_limmit)
 		{
@@ -133,8 +135,8 @@ int main()
 		}; 
 
 		//Hiting State
-		if (myEngine->KeyHeld(Key_Space) && marble->GetLocalZ() <= Max) {
-			if (Firing == false && over == false) {
+		if (myEngine->KeyHeld(Key_Space)) {
+			if (Firing == false) {
 				marble->MoveLocalZ(KGameSpeed);
 				Ready = true;
 			};
@@ -144,26 +146,28 @@ int main()
 		if (!Firing) {
 
 			for (int i = 0; i < BlockArray_length; i++) {
+				//sphere to sphere collision
 				float distx = BlockModels[i]->GetX() - marble->GetX();
 				float distz = BlockModels[i]->GetZ() - marble->GetZ();
 
 				float distance = sqrt((distx * distx) + (distz * distz));
 				bool collision = distance < (radius_marble + radius_block);
-
+#
 				//resolving the collision
-					if (collision) {
-						marble->SetX(OldX);
-						marble->SetZ(OldZ);
+				if (collision) {
+					marble->SetX(OldX);
+					marble->SetZ(OldZ);
 
-						//changing Blocks colour after collision
-						BlockModels[i]->SetSkin("tiles_red.jpg");
-						Ready = true;
-						Firing = true;
-						Collision_state = true;
-					};
+					//changing Blocks colour after collision
+					BlockModels[i]->SetSkin("tiles_red.jpg");
+					Ready = true;  
+					Firing = true;
+					Collision_state = true;
+					Hit++;
+				};
 			};
-
 		};
+
 
 		//Returing the marble
 		if (Collision_state == true) {
@@ -174,7 +178,42 @@ int main()
 				Ready = false;
 				Firing = false;
 				Collision_state = false;
-			};
+			}
+		};
+
+		//checking if the hit is more than 3
+		if (Hit > 2) {
+			marble->SetX(OldX);
+			marble->SetZ(OldZ);
+			Ready = true;
+			Firing = true;
+			Collision_state = true;
+			over = true;
+
+			//Changing the marbles colour
+			marble->SetSkin("glass_blue");
+
+			//text on screen after hitting 3 blocks
+			IFont* myFont = myEngine->LoadFont("Comic Sans MS", 56);
+			myFont->Draw("Game Over", 200, 100);
+		};
+
+		//over state
+		if (marble->GetLocalZ() >= Max && over == false) {
+				marble->SetX(OldX);
+				marble->SetZ(OldZ);
+				Ready = true;
+				Firing = true;
+				Collision_state = true;
+
+				//Returns of the original position
+				if (myEngine->KeyHit(Key_R)) {
+					marble->SetX(marble_x);
+					marble->SetZ(marble_z);
+					Ready = false;
+					Firing = false;
+					Collision_state = false;
+				};
 		};
 		
 		// Stop if the Escape key is pressed
