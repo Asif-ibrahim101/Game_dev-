@@ -19,11 +19,40 @@ int main()
 	bool Collision_state = false;
 	bool over = false;
 
-    /**** Set up your scene here ****/
-
-
+	/**** Set up your scene here ****/
 	//speed of the objects
 	const float KGameSpeed = 1.0f;
+
+	//Barriars1
+	float barrier_xPos = 10.0f;
+	float barrier_YPos = 4.0f;
+	float barrier_ZPos = 0.0f;
+	const int BarrierArray_length = 10;
+
+	IMesh* BarrierMesh = myEngine->LoadMesh("Barrier.x");
+	IModel* BarrierModels[BarrierArray_length];
+	IModel* BarrierModels1[BarrierArray_length];
+
+
+	//positioning all the models
+	for (int i = 0; i < BarrierArray_length; i++) {
+		BarrierModels[i] = BarrierMesh->CreateModel(-barrier_xPos, barrier_YPos, barrier_ZPos);
+		BarrierModels[i]->SetSkin("barrier1.jpg");
+		barrier_ZPos += 14;
+	};
+
+	//Barrier2
+	float barrier_xPos1 = 118.0f;
+	float barrier_YPos1 = 4.0f;
+	float barrier_ZPos1 = 0.0f;
+	//const int BarrierArray_length1 = 10;
+
+	//positioning all the models
+	for (int i = 0; i < BarrierArray_length; i++) {
+		BarrierModels1[i] = BarrierMesh->CreateModel(barrier_xPos1, barrier_YPos1, barrier_ZPos1);
+		BarrierModels1[i]->SetSkin("barrier1a");
+		barrier_ZPos1 += 14;
+	};
 
 	//floor
 	IMesh* floorMesh = myEngine->LoadMesh("Floor.X");
@@ -38,9 +67,9 @@ int main()
 	IModel* skyBox = skyBoxMesh->CreateModel(sky_X, sky_Y, sky_Z);
 
 	//Dummy
-	const float dummy_x = 50.0f;
+	/*const float dummy_x = 50.0f;
 	const float dummy_y = 1.0f;
-	const float dummy_z = 0.0f;
+	const float dummy_z = 0.0f;*/
 
 	//IMesh* dummyMesh = myEngine->LoadMesh("Dummy.x");
 	//IModel* dummy = dummyMesh->CreateModel(dummy_x, dummy_y, dummy_z);
@@ -69,11 +98,10 @@ int main()
 	float YPos = 4.0f;
 	float ZPos = 120.0f;
 	const int BlockArray_length = 10;
-	const int Colllision_lenght = 10;
 
 	IMesh* blockMesh = myEngine->LoadMesh("Block.x");
-	IModel* BlockModels[BlockArray_length] = { false };
-	bool BlockHits[BlockArray_length] = { true };
+	IModel* BlockModels[BlockArray_length];
+	bool BlockHits[BlockArray_length];
 
 	//positioning all the models
 	for (int i = 0; i < BlockArray_length; i++) {
@@ -88,6 +116,7 @@ int main()
 	const float Camera_Rotation = 10.0f;
 
 	ICamera* mycamera;
+	//mycamera = myEngine->CreateCamera(FPSCamera);
 	mycamera = myEngine->CreateCamera(ManualCamera, Camera_x, Camera_y, Camera_z);
 	mycamera->RotateX(Camera_Rotation);
 
@@ -102,7 +131,7 @@ int main()
 	float radius_block = 6.0f;
 
 	//maximum distance of the marble
-	const float Max  = 200.0f;
+	const float Max = 200.0f;
 
 	//for counting amount of hit 
 	int Hit = 0;
@@ -126,13 +155,13 @@ int main()
 			};
 		};
 
-		if (myEngine->KeyHeld(Key_X) && rotation > -Rotation_limmit ) {
+		if (myEngine->KeyHeld(Key_X) && rotation > -Rotation_limmit) {
 
 			if (Ready == false) {
 				marble->RotateY(-Rotation_speed);
 				rotation -= Rotation_speed;
 			};
-		}; 
+		};
 
 		//Hiting State
 		if (myEngine->KeyHeld(Key_Space)) {
@@ -160,7 +189,7 @@ int main()
 
 					//changing Blocks colour after collision
 					BlockModels[i]->SetSkin("tiles_red.jpg");
-					Ready = true;  
+					Ready = true;
 					Firing = true;
 					Collision_state = true;
 					Hit++;
@@ -200,22 +229,22 @@ int main()
 
 		//over state
 		if (marble->GetLocalZ() >= Max && over == false) {
-				marble->SetX(OldX);
-				marble->SetZ(OldZ);
-				Ready = true;
-				Firing = true;
-				Collision_state = true;
+			marble->SetX(OldX);
+			marble->SetZ(OldZ);
+			Ready = true;
+			Firing = true;
+			Collision_state = true;
 
-				//Returns of the original position
-				if (myEngine->KeyHit(Key_R)) {
-					marble->SetX(marble_x);
-					marble->SetZ(marble_z);
-					Ready = false;
-					Firing = false;
-					Collision_state = false;
-				};
+			//Returns of the original position
+			if (myEngine->KeyHit(Key_R)) {
+				marble->SetX(marble_x);
+				marble->SetZ(marble_z);
+				Ready = false;
+				Firing = false;
+				Collision_state = false;
+			};
 		};
-		
+
 		// Stop if the Escape key is pressed
 		if (myEngine->KeyHit(Key_Escape))
 		{
