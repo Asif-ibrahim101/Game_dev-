@@ -3,6 +3,9 @@
 #include "TL-Engine11.h" // TL-Engine11 include file and namespace
 using namespace tle;
 
+//float distance(IModel* Block_model, IModel* Sphere_model);
+//bool Sphere2Sphere(IModel* Block, IModel* Sphere, float radius_block, float radius_sphere);
+
 int main()
 {
 	// Create a 3D engine (using TL11 engine here) and open a window for it
@@ -21,7 +24,7 @@ int main()
 
 	/**** Set up your scene here ****/
 	//speed of the objects
-	const float KGameSpeed = 1.0f;
+	float KGameSpeed = 1.0f;
 
 	//Barriars1
 	float barrier_xPos = 10.0f;
@@ -37,7 +40,7 @@ int main()
 	//positioning all the models
 	for (int i = 0; i < BarrierArray_length; i++) {
 		BarrierModels[i] = BarrierMesh->CreateModel(-barrier_xPos, barrier_YPos, barrier_ZPos);
-		BarrierModels[i]->SetSkin("barrier1.jpg");
+		BarrierModels[i]->SetSkin("barrier1a.BMP");
 		barrier_ZPos += 14;
 	};
 
@@ -50,7 +53,7 @@ int main()
 	//positioning all the models
 	for (int i = 0; i < BarrierArray_length; i++) {
 		BarrierModels1[i] = BarrierMesh->CreateModel(barrier_xPos1, barrier_YPos1, barrier_ZPos1);
-		BarrierModels1[i]->SetSkin("barrier1a");
+		BarrierModels1[i]->SetSkin("barrier1a.BMP");
 		barrier_ZPos1 += 14;
 	};
 
@@ -67,21 +70,22 @@ int main()
 	IModel* skyBox = skyBoxMesh->CreateModel(sky_X, sky_Y, sky_Z);
 
 	//Dummy
-	/*const float dummy_x = 50.0f;
+	const float dummy_x = 50.0f;
 	const float dummy_y = 1.0f;
-	const float dummy_z = 0.0f;*/
+	const float dummy_z = 0.0f;
 
-	//IMesh* dummyMesh = myEngine->LoadMesh("Dummy.x");
-	//IModel* dummy = dummyMesh->CreateModel(dummy_x, dummy_y, dummy_z);
+	IMesh* dummyMesh = myEngine->LoadMesh("Dummy.x");
+	IModel* dummy = dummyMesh->CreateModel(dummy_x, dummy_y, dummy_z);
+
 
 	//marbels
-	const float marble_x = 50.0f;
+	const float marble_x = 0.0f;
 	const float marble_y = 2.0f;
 	const float marble_z = 0.0f;
 
 	IMesh* marbleMesh = myEngine->LoadMesh("Marble.x");
 	IModel* marble = marbleMesh->CreateModel(marble_x, marble_y, marble_z);
-	//marble->AttachToParent(dummy);
+	marble->AttachToParent(dummy);
 
 	//Arrow
 	const float Arrow_x = 0.0f;
@@ -90,7 +94,7 @@ int main()
 
 	IMesh* ArrowMesh = myEngine->LoadMesh("Arrow.x");
 	IModel* Arrow = ArrowMesh->CreateModel(Arrow_x, Arrow_y, Arrow_z);
-	Arrow->AttachToParent(marble);
+	Arrow->AttachToParent(dummy);
 	Arrow->MoveZ(-10.0f);
 
 	//Blocks
@@ -130,6 +134,14 @@ int main()
 	float radius_marble = 2.0f;
 	float radius_block = 6.0f;
 
+	//for the blocks
+	float bWidth = 12.0f;
+	float bDepth = 12.0f;
+
+	//for the barriers
+	float BeWidth = 15.0f;
+	float BeDepth = 15.0f;
+
 	//maximum distance of the marble
 	const float Max = 200.0f;
 
@@ -143,14 +155,14 @@ int main()
 		myEngine->DrawScene();
 
 		//getting location of the marble
-		float OldX = marble->GetX();
-		float OldZ = marble->GetZ();
+		float OldX = dummy->GetX();
+		float OldZ = dummy->GetZ();
 
 		//moving the marble and starting Ready State
 		if (myEngine->KeyHeld(Key_Z) && rotation < Rotation_limmit)
 		{
 			if (Ready == false) {
-				marble->RotateY(Rotation_speed);
+				dummy->RotateY(Rotation_speed);
 				rotation += Rotation_speed;
 			};
 		};
@@ -158,7 +170,7 @@ int main()
 		if (myEngine->KeyHeld(Key_X) && rotation > -Rotation_limmit) {
 
 			if (Ready == false) {
-				marble->RotateY(-Rotation_speed);
+				dummy->RotateY(-Rotation_speed);
 				rotation -= Rotation_speed;
 			};
 		};
@@ -174,53 +186,98 @@ int main()
 		//looking for collision
 		if (!Firing) {
 
+			//for blocks
 			for (int i = 0; i < BlockArray_length; i++) {
-				//sphere to sphere collision
-				float distx = BlockModels[i]->GetX() - marble->GetX();
-				float distz = BlockModels[i]->GetZ() - marble->GetZ();
 
-				float distance = sqrt((distx * distx) + (distz * distz));
-				bool collision = distance < (radius_marble + radius_block);
-#
+				//sphere to box collision
+				float minX = BlockModels[i]->GetX() - (BeWidth / 2) - radius_marble;
+				float maxX = BlockModels[i]->GetX() + (BeWidth / 2) + radius_marble;
+				float minZ = BlockModels[i]->GetZ() - (BeDepth / 2) - radius_marble;
+				float maxZ = BlockModels[i]->GetZ() - (BeDepth / 2) + radius_marble;
+
+				bool collision = marble->GetX() > minX && marble->GetX() < maxX
+					&& marble->GetZ() > minZ && marble->GetZ() < maxZ;
+
 				//resolving the collision
 				if (collision) {
-					marble->SetX(OldX);
-					marble->SetZ(OldZ);
-
-					//changing Blocks colour after collision
+					Hit++;
 					BlockModels[i]->SetSkin("tiles_red.jpg");
+					//changing Blocks colour after collision
 					Ready = true;
 					Firing = true;
 					Collision_state = true;
-					Hit++;
 				};
 			};
+
+			//for barrier1
+			for (int i = 0; i < BarrierArray_length; i++) {
+
+				//sphere to box collision
+				float minX = BarrierModels[i]->GetX() - (BeWidth / 2) - radius_marble;
+				float maxX = BarrierModels[i]->GetX() + (BeWidth / 2) + radius_marble;
+				float minZ = BarrierModels[i]->GetZ() - (BeDepth / 2) - radius_marble;
+				float maxZ = BarrierModels[i]->GetZ() - (BeDepth / 2) + radius_marble;
+
+				bool collision = marble->GetX() > minX && marble->GetX() < maxX
+					&& marble->GetZ() > minZ && marble->GetZ() < maxZ;
+
+				//resolving the collision
+				if (collision) {
+					//BlockModels[i]->SetSkin("tiles_red.jpg");
+					//changing Blocks colour after collision
+					Ready = true;
+					Firing = true;
+					Collision_state = true;
+				};
+			};
+
+			//for barrier2
+			for (int i = 0; i < BarrierArray_length; i++) {
+
+				//sphere to box collision
+				float minX = BarrierModels1[i]->GetX() - (bWidth / 2) - radius_marble;
+				float maxX = BarrierModels1[i]->GetX() + (bWidth / 2) + radius_marble;
+				float minZ = BarrierModels1[i]->GetZ() - (bDepth / 2) - radius_marble;
+				float maxZ = BarrierModels1[i]->GetZ() - (bDepth / 2) + radius_marble;
+
+				bool collision = marble->GetX() > minX && marble->GetX() < maxX
+					&& marble->GetZ() > minZ && marble->GetZ() < maxZ;
+
+				//resolving the collision
+				if (collision) {
+					//BlockModels[i]->SetSkin("tiles_red.jpg");
+					//changing Blocks colour after collision
+					Ready = true;
+					Firing = true;
+					Collision_state = true;
+				};
+			};
+
 		};
 
-
-		//Returing the marble
 		if (Collision_state == true) {
 			//Returing the marble
 			if (myEngine->KeyHit(Key_R)) {
-				marble->SetX(marble_x);
-				marble->SetZ(marble_z);
+				marble->SetX(OldX);
+				marble->SetZ(OldZ);
 				Ready = false;
 				Firing = false;
 				Collision_state = false;
 			}
 		};
 
-		//checking if the hit is more than 3
-		if (Hit > 2) {
-			marble->SetX(OldX);
-			marble->SetZ(OldZ);
+
+		////checking if the hit is more than 3
+		if (Hit > 4) {
+			dummy->SetX(OldX);
+			dummy->SetZ(OldZ);
 			Ready = true;
 			Firing = true;
 			Collision_state = true;
 			over = true;
 
 			//Changing the marbles colour
-			marble->SetSkin("glass_blue");
+			marble->SetSkin("glass_blue.jpg");
 
 			//text on screen after hitting 3 blocks
 			IFont* myFont = myEngine->LoadFont("Comic Sans MS", 56);
@@ -254,4 +311,18 @@ int main()
 
 	// Delete the 3D engine now we are finished with it
 	myEngine->Delete();
-}
+};
+
+
+////all functions
+//float distance(IModel* Block_model, IModel* Sphere_model) {
+//	float distx = Block_model->GetX() - Sphere_model->GetX();
+//	float distz = Block_model->GetZ() - Sphere_model->GetZ();
+//
+//	return sqrt((distx * distx) + (distz * distz));
+//};
+//
+//bool Sphere2Sphere(IModel* Block, IModel* Sphere, float radius_block, float radius_sphere) {
+//	float dist = distance(Block, Sphere);
+//	return dist < (radius_block + radius_sphere);
+//};
