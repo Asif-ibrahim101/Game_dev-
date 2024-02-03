@@ -16,10 +16,10 @@ int main()
 	//States
 	bool Ready = true;
 	bool Firing = false;
-	/*bool Collision_state = false;*/
 	bool over = false;
 
 	/**** Set up your scene here ****/
+
 	//speed of the objects
 	float KGameSpeed = 1.0f;
 	float marbleSpeed = 1.0f;
@@ -36,18 +36,18 @@ int main()
 
 
 	//positioning all the models
-	for (int i = 0; i < BarrierArray_length; i++) 
+	for (int i = 0; i < BarrierArray_length; i++)
 	{
 		BarrierModels[i] = BarrierMesh->CreateModel(-barrier_xPos, barrier_YPos, barrier_ZPos);
 		barrier_ZPos += 14;
 
-		if (i < 5) 
-		{
-			BarrierModels[i]->SetSkin("barrier1.BMP");
-		}
-		else if(i > 5)
+		if (i < 4)
 		{
 			BarrierModels[i]->SetSkin("barrier1a.BMP");
+		}
+		else if (i > 4)
+		{
+			BarrierModels[i]->SetSkin("barrier1.BMP");
 		}
 	};
 
@@ -62,13 +62,13 @@ int main()
 		BarrierModels1[i] = BarrierMesh->CreateModel(barrier_xPos1, barrier_YPos1, barrier_ZPos1);
 		barrier_ZPos1 += 14;
 
-		if (i < 5)
-		{
-			BarrierModels1[i]->SetSkin("barrier1.BMP");
-		}
-		else if (i > 5)
+		if (i < 4)
 		{
 			BarrierModels1[i]->SetSkin("barrier1a.BMP");
+		}
+		else if (i > 4)
+		{
+			BarrierModels1[i]->SetSkin("barrier1.BMP");
 		}
 	};
 
@@ -134,25 +134,19 @@ int main()
 	const float Camera_z = -60.0f;
 	const float Camera_Rotation = 10.0f;
 
-	ICamera* mycamera;
-	//mycamera = myEngine->CreateCamera(FPSCamera);
-	mycamera = myEngine->CreateCamera(ManualCamera, Camera_x, Camera_y, Camera_z);
-	mycamera->RotateX(Camera_Rotation);
+	ICamera* myCamera;
+	//myCamera = myEngine->CreateCamera(FPSCamera);
+	myCamera = myEngine->CreateCamera(ManualCamera, Camera_x, Camera_y, Camera_z);
+	myCamera->RotateX(Camera_Rotation);
 
 	//rotation of the marble
 	float rotation = 0.0f;
 	const float Rotation_limmit = 50.0f;
 	const float Rotation_speed = KGameSpeed / 6;
 
-	//initial position of the marble
-	float initialz = 0.0f;
-
 	//radius of the spheres
 	float radius_marble = 2.0f;
 	float radius_block = 12.0f;
-
-	//maximum distance of the marble
-	const float Max = 200.0f;
 
 	//for counting amount of hit 
 	int Hit = 0;
@@ -190,8 +184,8 @@ int main()
 				rotation -= Rotation_speed;
 			};
 
-			//Hiting State
-			if (myEngine->KeyHeld(Key_Space))
+			//Firing State
+			if (myEngine->KeyHit(Key_Space))
 			{
 				Firing = true;
 			};
@@ -201,7 +195,7 @@ int main()
 		{
 			marble->MoveLocalZ(marbleSpeed * KGameSpeed);
 
-			//for the blocks
+			//collision for the blocks
 			for (int i = 0; i < BlockArray_length; i++)
 			{
 				//sphere to box collision
@@ -232,16 +226,12 @@ int main()
 						over = true;
 
 						//Changing the marbles colour
-						marble->SetSkin("glass_blue");
-
-						//text on screen after hitting 3 blocks
-						IFont* myFont = myEngine->LoadFont("Comic Sans MS", 56);
-						myFont->Draw("Game Over", 200, 100);
+						marble->SetSkin("glass_blue.jpg");
 					};
 				};
 			};
 
-			//for the barriers
+			//collision for the barriers
 			for (int i = 0; i < BarrierArray_length; i++)
 			{
 				//sphere to box collision
@@ -258,9 +248,8 @@ int main()
 				{
 					marbleSpeed = -1;
 				};
-			};
+			}
 
-			//for the barriers
 			for (int i = 0; i < BarrierArray_length; i++)
 			{
 				//sphere to box collision
@@ -279,7 +268,6 @@ int main()
 				};
 			};
 
-
 			//Returing the marble
 			if (marble->GetZ() <= dummy_z)
 			{
@@ -288,23 +276,7 @@ int main()
 				Firing = false;
 			};
 
-		}
-
-
-		////over state
-		//if (over == true)
-		//{
-		//	//Returns of the original position
-		//	if (myEngine->KeyHit(Key_R))
-		//	{
-		//		marble->SetX(dummy_x);
-		//		marble->SetZ(dummy_z);
-		//		Ready = true;
-		//		Firing = true;
-		//		Hit = 0;
-		//		//Collision_state = false;
-		//	};
-		//};
+		};
 
 		// Stop if the Escape key is pressed
 		if (myEngine->KeyHit(Key_Escape))
