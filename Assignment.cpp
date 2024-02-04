@@ -3,6 +3,8 @@
 #include "TL-Engine11.h" // TL-Engine11 include file and namespace
 using namespace tle;
 
+bool CheckAndHandleCollision(Model* model1, Model* model2, float width, float depth, float radius, float marble_speed);
+
 int main()
 {
 	// Create a 3D engine (using TL11 engine here) and open a window for it
@@ -116,7 +118,7 @@ int main()
 		BarrierModels[i] = BarrierMesh->CreateModel(-barrier_xPos, barrier_YPos, barrier_ZPos);
 		barrier_ZPos += 14;
 
-		BarrierModels[i]->SetSkin(i < 5 ? "barrier1a.BMP" : "barrier1.BMP");
+		BarrierModels[i]->SetSkin(i < 3 ? "barrier1a.BMP" : "barrier1.BMP");
 	};
 
 	//positioning all the barriers
@@ -124,7 +126,7 @@ int main()
 		BarrierModels1[i] = BarrierMesh->CreateModel(barrier_xPos1, barrier_YPos1, barrier_ZPos1);
 		barrier_ZPos1 += 14;
 
-		BarrierModels1[i]->SetSkin(i < 5 ? "barrier1a.BMP" : "barrier1.BMP");
+		BarrierModels1[i]->SetSkin(i < 3 ? "barrier1a.BMP" : "barrier1.BMP");
 
 	};
 
@@ -169,15 +171,8 @@ int main()
 			//collision for the blocks
 			for (int i = 0; i < BlockArray_length; i++)
 			{
-				//sphere to box collision
-				float minX = BlockModels[i]->GetX() - (bWidth / 2) - radius_marble;
-				float maxX = BlockModels[i]->GetX() + (bWidth / 2) + radius_marble;
-				float minZ = BlockModels[i]->GetZ() - (bDepth / 2) - radius_marble;
-				float maxZ = BlockModels[i]->GetZ() - (bDepth / 2) + radius_marble;
-
-				bool collision = marble->GetX() > minX && marble->GetX() < maxX
-					&& marble->GetZ() > minZ && marble->GetZ() < maxZ;
-
+				bool collision = false;
+				(CheckAndHandleCollision(BlockModels[i], marble, bWidth, bDepth, radius_marble, marbleSpeed) ? collision = true : false);
 				//resolving the collision
 				if (collision)
 				{
@@ -201,38 +196,19 @@ int main()
 			};
 
 			//collision for the barriers
+			bool collision = false;
 			for (int i = 0; i < BarrierArray_length; i++)
 			{
-				//sphere to box collision
-				float minX = BarrierModels[i]->GetX() - (BeWidth / 2) - radius_marble;
-				float maxX = BarrierModels[i]->GetX() + (BeWidth / 2) + radius_marble;
-				float minZ = BarrierModels[i]->GetZ() - (BeDepth / 2) - radius_marble;
-				float maxZ = BarrierModels[i]->GetZ() - (BeDepth / 2) + radius_marble;
-
-				bool collision = marble->GetX() > minX && marble->GetX() < maxX
-					&& marble->GetZ() > minZ && marble->GetZ() < maxZ;
-
-				//resolving the collision
-				if (collision)
-				{
+				(CheckAndHandleCollision(BarrierModels[i], marble, BeWidth, BeDepth, radius_marble, marbleSpeed) ? collision = true : false);
+				if (collision) {
 					marbleSpeed = -0.34;
 				};
 			}
 
 			for (int i = 0; i < BarrierArray_length; i++)
 			{
-				//sphere to box collision
-				float minX = BarrierModels1[i]->GetX() - (BeWidth / 2) - radius_marble;
-				float maxX = BarrierModels1[i]->GetX() + (BeWidth / 2) + radius_marble;
-				float minZ = BarrierModels1[i]->GetZ() - (BeDepth / 2) - radius_marble;
-				float maxZ = BarrierModels1[i]->GetZ() - (BeDepth / 2) + radius_marble;
-
-				bool collision = marble->GetX() > minX && marble->GetX() < maxX
-					&& marble->GetZ() > minZ && marble->GetZ() < maxZ;
-
-				//resolving the collision
-				if (collision)
-				{
+				(CheckAndHandleCollision(BarrierModels1[i], marble, BeWidth, BeDepth, radius_marble, marbleSpeed) ? collision = true : false);
+				if (collision) {
 					marbleSpeed = -0.34;
 				};
 			};
@@ -256,4 +232,19 @@ int main()
 	// Delete the 3D engine now we are finished with it
 	myEngine->Delete();
 };
+
+bool CheckAndHandleCollision(Model* model1, Model* model2, float width, float depth, float radius, float marble_speed) {
+	// Calculate collision bounds
+	//sphere to box collision
+	float minX = model1->GetX() - (width / 2) - radius;
+	float maxX = model1->GetX() + (width / 2) + radius;
+	float minZ = model1->GetZ() - (depth / 2) - radius;
+	float maxZ = model1->GetZ() - (depth / 2) + radius;
+
+	return (
+			model2->GetX() > minX && model2->GetX() < maxX
+			&& model2->GetZ() > minZ && model2->GetZ() < maxZ
+		);
+};
+
 
