@@ -1,9 +1,20 @@
 // Assignment2.cpp: A program using the TL-Engine
 
 #include "TL-Engine11.h" // TL-Engine11 include file and namespace
+#include <string>
 using namespace tle;
 
 float kGameSpeed = 1.0f; //All Movement is multiplied by this
+
+//Keyboard Controls
+
+//Car
+const EKeyCode accelerate = Key_W;
+const EKeyCode turnLeft = Key_A;
+const EKeyCode decelerate = Key_S;
+const EKeyCode turnRight = Key_D;
+const float ThurstFactor = 0.000005f;
+const float coeffitiantOfDrag = -0.001;
 
 //Camera
 const EKeyCode toggleChaseCam = Key_1;
@@ -17,6 +28,23 @@ const EKeyCode camRight = Key_Right;
 const float KCameraMove = kGameSpeed * 0.01;
 const float KMouseWheelMove = kGameSpeed * 10.0f;
 const float KMouseRotation = kGameSpeed * 0.3f;
+
+struct Vector2d
+{
+	float x;
+	float z;
+};
+
+Vector2d scalar(float s, Vector2d v)
+{
+	return { s * v.x, s * v.z };
+};
+
+Vector2d addthere(Vector2d v1, Vector2d v2, Vector2d v3) {
+	return { v1.x + v2.x + v3.x, v1.z + v2.z + v3.z };
+};
+
+bool CheckAndHandleCollision(Model* model1, Model* model2, float width, float depth, float radius, float marble_speed);
 
 int main()
 {
@@ -39,86 +67,78 @@ int main()
 	IMesh* skyBoxMesh = myEngine->LoadMesh("Skybox 07.x");
 	IModel* skyBox = skyBoxMesh->CreateModel(SkyBoxX, SkyBoxY, SkyBoxZ);
 
-	//checkpoints
-	const float CheckPointRotate = 90.0f;
-
-	//for checkpoint 1
-	const float CheckPoint1X = 10.0f;
-	const float CheckPoint1Y = 0.0f;
-	const float CheckPoint1Z = 120.0f;
-
-	//for checkpoint 2
-	const float CheckPoint2X = 25.0f;
-	const float CheckPoint2Y = 0.0f;
-	const float CheckPoint2Z = 56.0f;
-
-	IMesh* checkPointMesh = myEngine->LoadMesh("checkpoint.x");
-	const int CheckPointSize = 3;
-	IModel* CheckPoints[CheckPointSize];
-
-	for (int i = 0; i < CheckPointSize; i++)
-	{
-		CheckPoints[i] = checkPointMesh->CreateModel();
-
-	};
-	CheckPoints[1]->SetPosition(CheckPoint1X, CheckPoint1Y, CheckPoint1Z);
-	CheckPoints[1]->RotateY(CheckPointRotate);
-	CheckPoints[2]->SetPosition(CheckPoint2X, CheckPoint2Y, CheckPoint2Z);
-
-	//isle
-	const float isleX = 10.0f;
-	const float isleY = 0.0f;
-	const float isleZ1 = 40.0f;
-	const float isleZ2 = 56.0f;
-	const float isleZ3 = 72.0f;
-
-	IMesh* isleMesh = myEngine->LoadMesh("IsleStraight.x");
-	const int isleSIze = 7;
-	IModel* isle[isleSIze];
-
-	for (int i = 0; i < isleSIze; i++)
-	{
-		isle[i] = isleMesh->CreateModel(-isleX, isleY, isleZ1);
-	};
-
-	isle[1]->SetPosition(-isleX, isleY, isleZ1);
-	isle[2]->SetPosition(isleX, isleY, isleZ1);
-	isle[3]->SetPosition(-isleX, isleY, isleZ2);
-	isle[4]->SetPosition(isleX, isleY, isleZ2);
-	isle[5]->SetPosition(-isleX, isleY, isleZ3);
-	isle[6]->SetPosition(isleX, isleY, isleZ3);
-
-	//walls
-	const float WallX = 10.0f;
-	const float WallY = 0.0f;
-	const float WallZ1 = 48.0f;
-	const float WallZ2 = 64.0f;
-
-	IMesh* WallMesh = myEngine->LoadMesh("Wall.x");
-	const int WallSize = 5;
-	IModel* Wall[WallSize];
-
-	for (int i = 0; i < WallSize; i++)
-	{
-		Wall[i] = WallMesh->CreateModel(-WallX, WallY, WallZ1);
-	};
-
-
-	Wall[1]->SetPosition(-WallX, WallY, WallZ1);
-	Wall[2]->SetPosition(WallX, WallY, WallZ1);
-	Wall[3]->SetPosition(-WallX, WallY, WallZ2);
-	Wall[4]->SetPosition(WallX, WallY, WallZ2);
-
+	//backdrop
+	ISprite* backdrop = myEngine->CreateSprite("ui_backdrop.jpg", 0, 0, 1000);
+	IFont *font = myEngine->LoadFont("Comic Sans MS", 200);
+	font->Draw("Hellow world", 2000, 10, kWhite);
 
 	//car
 	IMesh* CarMesh = myEngine->LoadMesh("Race2.x");
 	IModel* Car = CarMesh->CreateModel(0, 0, -20.0f);
-	float carSpeed = frameTime * kGameSpeed;
+
+	Vector2d momentum = { 0.0f, 0.0f };
+	Vector2d thurst = { 0.0f, 0.0f };
+	Vector2d drag = { 0.0f, 0.0f };
+	Vector2d facingVector = { 0.0f, 1.0f };
+	float matrix[4][4]; //place to store the model matrix
+	float radius_car = 2.0f;
+	//float radius_block = 12.0f;
+
+	//checkpoints
+	const int CheckPointSize = 3;
+	const float CheckPointRotate = 90.0f;
+	IMesh* checkPointMesh = myEngine->LoadMesh("checkpoint.x");
+	IModel* CheckPoints[CheckPointSize];
+
+	const float CheckPountY[CheckPointSize] = { 0, 0, 0 };
+	const float CheckPointX[CheckPointSize] = { 0, 10, 45 };
+	const float CheckPointZ[CheckPointSize] = { 0, 120, 56 };
+
+	for (int i = 0; i < CheckPointSize; i++)
+	{
+		CheckPoints[i] = checkPointMesh->CreateModel(CheckPointX[i], CheckPountY[i], CheckPointZ[i]);
+	};
+	CheckPoints[1]->RotateY(CheckPointRotate);
+
+	//isle
+	const int isleSIze = 4;
+	IModel* isle[isleSIze];
+	IMesh* isleMesh = myEngine->LoadMesh("IsleStraight.x");
+
+	const float IsleY = 0;
+	const float IsleX[isleSIze] = { -10, 10, -10, 10,};
+	const float IsleZ[isleSIze] = {40, 40, 94, 94,};
+
+	for (int i = 0; i < isleSIze; i++)
+	{
+		isle[i] = isleMesh->CreateModel(IsleX[i], IsleY, IsleZ[i]);
+		isle[i]->SetSkin("Brickwall3_Texture.png");
+		isle[i]->Scale(1.5);
+	};
+
+	//walls
+	const int WallSize = 24;
+	IMesh* WallMesh = myEngine->LoadMesh("Wall.x");
+	IModel* Wall[WallSize];
+
+	/// for the walls
+	float bWidth = 12.0f;
+	float bDepth = 12.0f;
+
+	const float WallY = 0;
+	const float WallX[WallSize] = { -10, 10, -10, 10,  -10, 10, -10, 10, -10, 10, -10, 10,  -10, 10, -10, 10,  -10, 10, -10, 10, -10, 10, -10, 10 };
+	const float WallZ[WallSize] = { 48, 48, 64, 64, 50, 50, 70, 70, 52,52, 76, 76, 54, 54, 82, 82, 56, 56, 88,88, 58, 58, 94, 94};
+
+	for (int i = 0; i < WallSize; i++)
+	{
+		Wall[i] = WallMesh->CreateModel(WallX[i], WallY, WallZ[i]);
+		Wall[i]->SetSkin("Brickwall2_Texture.png");
+		Wall[i]->Scale(1.5);
+	};
 
 	//Floor
 	IMesh* GroundMesh = myEngine->LoadMesh("ground.x");
 	IModel* ground = GroundMesh->CreateModel();
-
 
 	//mouse
 	int mouseMoveX = 0;
@@ -140,17 +160,63 @@ int main()
 	{
 		// Draw the scene
 		myEngine->DrawScene();
+		
+		//Get the facing vector form the model mattrix
+		Car->GetMatrix(&matrix[0][0]);  //get the model mattrix
+		facingVector = { matrix[2][0], matrix[2][2] }; //local z axis's x and z components
+
+		//Car Control
+		/////////////
+	
+		//calculate thurst 
+		if (myEngine->KeyHeld(accelerate))
+		{
+			thurst = scalar(ThurstFactor, facingVector);
+		}
+		else if (myEngine->KeyHeld(decelerate))
+		{
+			thurst = scalar(-ThurstFactor, facingVector);
+		}
+		else
+		{
+			thurst = { 0.0f, 0.0f };
+		};
+		if (myEngine->KeyHeld(turnLeft)) Car->RotateY(-0.01f);
+		if (myEngine->KeyHeld(turnRight)) Car->RotateY(0.01f);
+
+		//calculate drag
+		drag = scalar(coeffitiantOfDrag, momentum);
+
+		//calculate new momentum
+		momentum = addthere(momentum, drag, thurst);
+
+		//Move Car
+		Car->Move(momentum.x, 0.0f, momentum.z);
 
 		//Cameara Control
 		/////////////////
-		
+	
 		//keyboard controlled camera movement
 		if (myEngine->KeyHeld(camUp)) camera->MoveLocalZ(KCameraMove);
 		if (myEngine->KeyHeld(camDown)) camera->MoveLocalZ(-KCameraMove);
 		if (myEngine->KeyHeld(camRight)) camera->MoveLocalX(KCameraMove);
 		if (myEngine->KeyHeld(camLeft)) camera->MoveLocalX(-KCameraMove);
 
-		//mouse controlled camera movement
+		//toggle chase cam mode
+		if (myEngine->KeyHit(toggleChaseCam))
+		{
+			ChaseCamActive = !ChaseCamActive; //making it true
+			if (ChaseCamActive)
+			{
+				camera->AttachToParent(Car);
+				camera->SetPosition(CameraX, CameraY, CameraZ);
+			}
+			else
+			{
+				camera->DetachFromParent();
+			};
+		};
+		////mouse controlled camera movement
 		if (mouseCaptureActive && !ChaseCamActive)
 		{
 			mouseMoveX += myEngine->GetMouseMovementX(); //maintain movemnet
@@ -171,6 +237,7 @@ int main()
 			if (mouseCaptureActive)
 			{
 				myEngine->StartMouseCapture();
+				!mouseCaptureActive;
 			}
 			else
 			{
@@ -178,21 +245,8 @@ int main()
 			}
 		};
 
-		//toggle chase cam mode
+		
 
-		if (myEngine->KeyHit(toggleChaseCam))
-		{
-			ChaseCamActive = !ChaseCamActive; //making it true
-			if (ChaseCamActive)
-			{
-				camera->AttachToParent(Car);
-				camera->SetPosition(CameraX, CameraY, CameraZ);
-			}
-			else
-			{
-				camera->DetachFromParent();
-			};
-		};
 		// Stop if the Escape key is pressed
 		if (myEngine->KeyHit(Key_Escape))
 		{
@@ -205,7 +259,19 @@ int main()
 }
 
 
+bool CheckAndHandleCollision(Model* model1, Model* model2, float width, float depth, float radius, float marble_speed) {
+	// Calculate collision bounds
+	//sphere to box collision
+	float minX = model1->GetX() - (width / 2) - radius;
+	float maxX = model1->GetX() + (width / 2) + radius;
+	float minZ = model1->GetZ() - (depth / 2) - radius;
+	float maxZ = model1->GetZ() - (depth / 2) + radius;
 
+	return (
+		model2->GetX() > minX && model2->GetX() < maxX
+		&& model2->GetZ() > minZ && model2->GetZ() < maxZ
+		);
+};
 
 
 
