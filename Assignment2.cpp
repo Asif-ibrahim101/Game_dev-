@@ -4,30 +4,10 @@
 #include <string>
 using namespace tle;
 
-float kGameSpeed = 1.0f; //All Movement is multiplied by this
+//float kGameSpeed = 1.0f; //All Movement is multiplied by this
 
 //Keyboard Controls
 
-//Car
-const EKeyCode accelerate = Key_W;
-const EKeyCode turnLeft = Key_A;
-const EKeyCode decelerate = Key_S;
-const EKeyCode turnRight = Key_D;
-const float ThurstFactor = 0.000005f;
-const float coeffitiantOfDrag = -0.001;
-
-//Camera
-const EKeyCode toggleChaseCam = Key_1;
-const EKeyCode toggleMouseCapture = Key_Tab;
-const EKeyCode camUp = Key_Up;
-const EKeyCode camDown = Key_Down;
-const EKeyCode camLeft = Key_Left;
-const EKeyCode camRight = Key_Right;
-
-//Cameara Control
-const float KCameraMove = kGameSpeed * 0.01;
-const float KMouseWheelMove = kGameSpeed * 10.0f;
-const float KMouseRotation = kGameSpeed * 0.3f;
 
 struct Vector2d
 {
@@ -57,7 +37,28 @@ int main()
 	myEngine->AddMediaFolder("Media");
 
 	/**** Set up your scene here ****/
-	float frameTime = 0.0f;
+	float frameRate = myEngine->FrameTime();
+
+	//Car
+	const EKeyCode accelerate = Key_W;
+	const EKeyCode turnLeft = Key_A;
+	const EKeyCode decelerate = Key_S;
+	const EKeyCode turnRight = Key_D;
+	const float ThurstFactor = 0.00005f;
+	const float coeffitiantOfDrag = -0.001;
+
+	//Camera
+	const EKeyCode toggleChaseCam = Key_1;
+	const EKeyCode toggleMouseCapture = Key_Tab;
+	const EKeyCode camUp = Key_Up;
+	const EKeyCode camDown = Key_Down;
+	const EKeyCode camLeft = Key_Left;
+	const EKeyCode camRight = Key_Right;
+
+	//Cameara Control
+	const float KCameraMove = frameRate * 1;
+	const float KMouseWheelMove = frameRate * 10.0f;
+	const float KMouseRotation = frameRate * 0.3f;
 
 	//skybox
 	const float  SkyBoxX = 0.0f;
@@ -67,22 +68,19 @@ int main()
 	IMesh* skyBoxMesh = myEngine->LoadMesh("Skybox 07.x");
 	IModel* skyBox = skyBoxMesh->CreateModel(SkyBoxX, SkyBoxY, SkyBoxZ);
 
-	//backdrop
-	ISprite* backdrop = myEngine->CreateSprite("ui_backdrop.jpg", 0, 0, 1000);
-	IFont *font = myEngine->LoadFont("Comic Sans MS", 200);
-	font->Draw("Hellow world", 2000, 10, kWhite);
-
 	//car
+	const float carX = 0.0f;
+	const float carY = 1.0f;
+	const float carZ = -20.0f;
+
 	IMesh* CarMesh = myEngine->LoadMesh("Race2.x");
-	IModel* Car = CarMesh->CreateModel(0, 0, -20.0f);
+	IModel* Car = CarMesh->CreateModel(carX, carY, carZ);
 
 	Vector2d momentum = { 0.0f, 0.0f };
 	Vector2d thurst = { 0.0f, 0.0f };
 	Vector2d drag = { 0.0f, 0.0f };
 	Vector2d facingVector = { 0.0f, 1.0f };
 	float matrix[4][4]; //place to store the model matrix
-	float radius_car = 2.0f;
-	//float radius_block = 12.0f;
 
 	//checkpoints
 	const int CheckPointSize = 3;
@@ -106,8 +104,8 @@ int main()
 	IMesh* isleMesh = myEngine->LoadMesh("IsleStraight.x");
 
 	const float IsleY = 0;
-	const float IsleX[isleSIze] = { -10, 10, -10, 10,};
-	const float IsleZ[isleSIze] = {40, 40, 94, 94,};
+	const float IsleX[isleSIze] = { -10, 10, -10, 10, };
+	const float IsleZ[isleSIze] = { 40, 40, 94, 94, };
 
 	for (int i = 0; i < isleSIze; i++)
 	{
@@ -127,7 +125,7 @@ int main()
 
 	const float WallY = 0;
 	const float WallX[WallSize] = { -10, 10, -10, 10,  -10, 10, -10, 10, -10, 10, -10, 10,  -10, 10, -10, 10,  -10, 10, -10, 10, -10, 10, -10, 10 };
-	const float WallZ[WallSize] = { 48, 48, 64, 64, 50, 50, 70, 70, 52,52, 76, 76, 54, 54, 82, 82, 56, 56, 88,88, 58, 58, 94, 94};
+	const float WallZ[WallSize] = { 48, 48, 64, 64, 50, 50, 70, 70, 52,52, 76, 76, 54, 54, 82, 82, 56, 56, 88,88, 58, 58, 94, 94 };
 
 	for (int i = 0; i < WallSize; i++)
 	{
@@ -149,25 +147,30 @@ int main()
 	//camera
 	bool ChaseCamActive = false; //state of camera 
 	const float CameraX = 0.0f;
-	const float CameraY = 15.0f;
-	const float CameraZ = -55.0f;
+	const float CameraY = 10.0f;
+	const float CameraZ = -25.0f;
 
 	ICamera* camera;
 	camera = myEngine->CreateCamera(kManual, CameraX, CameraY, CameraZ); //kManual, 0.0f, 30.0f, -100.0f
+	camera->AttachToParent(Car);
+
+	//walkway
+	IMesh* WalkWayMesh = myEngine->LoadMesh("Walkway.x");
+	IModel* Walkway = WalkWayMesh->CreateModel();
 
 	// The main game loop, repeat until engine is stopped
 	while (myEngine->IsRunning())
 	{
 		// Draw the scene
 		myEngine->DrawScene();
-		
+
 		//Get the facing vector form the model mattrix
 		Car->GetMatrix(&matrix[0][0]);  //get the model mattrix
 		facingVector = { matrix[2][0], matrix[2][2] }; //local z axis's x and z components
 
 		//Car Control
 		/////////////
-	
+
 		//calculate thurst 
 		if (myEngine->KeyHeld(accelerate))
 		{
@@ -181,8 +184,8 @@ int main()
 		{
 			thurst = { 0.0f, 0.0f };
 		};
-		if (myEngine->KeyHeld(turnLeft)) Car->RotateY(-0.01f);
-		if (myEngine->KeyHeld(turnRight)) Car->RotateY(0.01f);
+		if (myEngine->KeyHeld(turnLeft)) Car->RotateY(-0.1f);
+		if (myEngine->KeyHeld(turnRight)) Car->RotateY(0.1f);
 
 		//calculate drag
 		drag = scalar(coeffitiantOfDrag, momentum);
@@ -195,27 +198,24 @@ int main()
 
 		//Cameara Control
 		/////////////////
-	
+
 		//keyboard controlled camera movement
 		if (myEngine->KeyHeld(camUp)) camera->MoveLocalZ(KCameraMove);
 		if (myEngine->KeyHeld(camDown)) camera->MoveLocalZ(-KCameraMove);
 		if (myEngine->KeyHeld(camRight)) camera->MoveLocalX(KCameraMove);
 		if (myEngine->KeyHeld(camLeft)) camera->MoveLocalX(-KCameraMove);
 
-		//toggle chase cam mode
+		////toggle chase cam mode
 		if (myEngine->KeyHit(toggleChaseCam))
 		{
 			ChaseCamActive = !ChaseCamActive; //making it true
 			if (ChaseCamActive)
 			{
-				camera->AttachToParent(Car);
+				//camera->AttachToParent(Car);
 				camera->SetPosition(CameraX, CameraY, CameraZ);
 			}
-			else
-			{
-				camera->DetachFromParent();
-			};
 		};
+
 		////mouse controlled camera movement
 		if (mouseCaptureActive && !ChaseCamActive)
 		{
@@ -245,7 +245,7 @@ int main()
 			}
 		};
 
-		
+
 
 		// Stop if the Escape key is pressed
 		if (myEngine->KeyHit(Key_Escape))
@@ -319,16 +319,3 @@ bool CheckAndHandleCollision(Model* model1, Model* model2, float width, float de
 
 
 
-
-
-
-/*if (myEngine->AverageFPS() <= 0) {
-	frameTime = kGameSpeed * frameTime;
-}
-else {
-	frameTime = kGameSpeed / myEngine->AverageFPS();
-};
-carSpeed = frameTime * kGameSpeed;
-
-Car->MoveLocalZ(carSpeed);*/
-//frameTime = myEngine->Timer();
