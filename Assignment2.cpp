@@ -7,7 +7,26 @@ using namespace tle;
 //float kGameSpeed = 1.0f; //All Movement is multiplied by this
 
 //Keyboard Controls
+//Car
+const EKeyCode accelerate = Key_W;
+const EKeyCode turnLeft = Key_A;
+const EKeyCode decelerate = Key_S;
+const EKeyCode turnRight = Key_D;
+const float ThurstFactor = 0.000005f;
+const float coeffitiantOfDrag = -0.001;
 
+//Camera
+const EKeyCode toggleChaseCam = Key_1;
+const EKeyCode toggleMouseCapture = Key_Tab;
+const EKeyCode camUp = Key_Up;
+const EKeyCode camDown = Key_Down;
+const EKeyCode camLeft = Key_Left;
+const EKeyCode camRight = Key_Right;
+
+//constants and variables
+float frameTime = 0;
+float elaspeedTime = 0.0f;
+float countDownTime = 3.0f;
 
 struct Vector2d
 {
@@ -24,7 +43,9 @@ Vector2d addthere(Vector2d v1, Vector2d v2, Vector2d v3) {
 	return { v1.x + v2.x + v3.x, v1.z + v2.z + v3.z };
 };
 
-bool CheckAndHandleCollision(Model* model1, Model* model2, float width, float depth, float radius, float marble_speed);
+bool CheckAndHandleCollisionIsle(Model* car, Model* isle, float isle_width, float isle_depth, float Car_radius);
+bool CheckAndHandleCollisionWalls(Model* car, Model* Wall, float Wall_width, float Wall_depth, float Car_radius);
+
 
 int main()
 {
@@ -39,21 +60,13 @@ int main()
 	/**** Set up your scene here ****/
 	float frameRate = myEngine->FrameTime();
 
-	//Car
-	const EKeyCode accelerate = Key_W;
-	const EKeyCode turnLeft = Key_A;
-	const EKeyCode decelerate = Key_S;
-	const EKeyCode turnRight = Key_D;
-	const float ThurstFactor = 0.00005f;
-	const float coeffitiantOfDrag = -0.001;
+	//states
+	enum GameStates { Start, Countdown, Ready };
+	GameStates gameState = Start;
 
-	//Camera
-	const EKeyCode toggleChaseCam = Key_1;
-	const EKeyCode toggleMouseCapture = Key_Tab;
-	const EKeyCode camUp = Key_Up;
-	const EKeyCode camDown = Key_Down;
-	const EKeyCode camLeft = Key_Left;
-	const EKeyCode camRight = Key_Right;
+	//Fonts and spites
+	IFont* myFont = myEngine->LoadFont("Times New Roman", 80);
+	Sprite* mySpite = myEngine->CreateSprite("ui_backdrop.jpg", 0.0f, 800.0f);
 
 	//Cameara Control
 	const float KCameraMove = frameRate * 1;
@@ -72,7 +85,7 @@ int main()
 	const float carX = 0.0f;
 	const float carY = 1.0f;
 	const float carZ = -20.0f;
-
+	const float car_Radius = 5.0f;
 	IMesh* CarMesh = myEngine->LoadMesh("Race2.x");
 	IModel* Car = CarMesh->CreateModel(carX, carY, carZ);
 
@@ -95,10 +108,14 @@ int main()
 	for (int i = 0; i < CheckPointSize; i++)
 	{
 		CheckPoints[i] = checkPointMesh->CreateModel(CheckPointX[i], CheckPountY[i], CheckPointZ[i]);
+		CheckPoints[i]->Scale(1.1);
 	};
 	CheckPoints[1]->RotateY(CheckPointRotate);
 
 	//isle
+	const float isle_depth = 2.0f;
+	const float isle_width = 2.0f;
+
 	const int isleSIze = 4;
 	IModel* isle[isleSIze];
 	IMesh* isleMesh = myEngine->LoadMesh("IsleStraight.x");
@@ -115,14 +132,16 @@ int main()
 	};
 
 	//walls
+
+	const float Wall_depth = 2.5f;
+	const float Wall_width = 2.5f;
+
 	const int WallSize = 24;
 	IMesh* WallMesh = myEngine->LoadMesh("Wall.x");
 	IModel* Wall[WallSize];
 
 	/// for the walls
-	float bWidth = 12.0f;
-	float bDepth = 12.0f;
-
+	const float radius_Wall = 2.0f;
 	const float WallY = 0;
 	const float WallX[WallSize] = { -10, 10, -10, 10,  -10, 10, -10, 10, -10, 10, -10, 10,  -10, 10, -10, 10,  -10, 10, -10, 10, -10, 10, -10, 10 };
 	const float WallZ[WallSize] = { 48, 48, 64, 64, 50, 50, 70, 70, 52,52, 76, 76, 54, 54, 82, 82, 56, 56, 88,88, 58, 58, 94, 94 };
@@ -154,22 +173,81 @@ int main()
 	camera = myEngine->CreateCamera(kManual, CameraX, CameraY, CameraZ); //kManual, 0.0f, 30.0f, -100.0f
 	camera->AttachToParent(Car);
 
-	//walkway
-	IMesh* WalkWayMesh = myEngine->LoadMesh("Walkway.x");
-	IModel* Walkway = WalkWayMesh->CreateModel();
-
 	// The main game loop, repeat until engine is stopped
 	while (myEngine->IsRunning())
 	{
 		// Draw the scene
 		myEngine->DrawScene();
+		frameTime = myEngine->Timer();
+
+		if (gameState == Start)
+		{
+			myFont->Draw("Press Space to Start", 800, 300, kRed, CentreAlign); //player to press start
+
+			if (myEngine->KeyHit(Key_Space))
+			{
+				gameState = Countdown;
+			}
+		};
+
+		if (gameState == Countdown)
+		{
+			countDownTime -= frameTime;
+			if (countDownTime > 2)
+			{
+				myFont->Draw("3", 800, 300, kRed, CentreAlign);
+			}
+			else if (countDownTime > 1)
+			{
+				myFont->Draw("2", 800, 300, kRed, CentreAlign);
+			}
+			else if (countDownTime > 0)
+			{
+				myFont->Draw("1", 800, 300, kRed, CentreAlign);
+			}
+			else if (countDownTime > -0.5f)
+			{
+				myFont->Draw("G0", 800, 300, kRed, CentreAlign);
+			}
+			else
+			{
+				gameState = Ready;
+			};
+		};
+
+		//Collision with isles
+		bool collision_isle = false;
+		for (int i = 0; i < isleSIze; i++)
+		{
+			if (CheckAndHandleCollisionIsle(Car, Wall[i], car_Radius, Wall_width, Wall_depth))
+				collision_isle = true;
+		};
+
+		//resolving collision with isle
+		if (collision_isle)
+		{
+			momentum.x *= -1;
+			momentum.z *= -1;
+		};
+
+		//Collision with walls
+		bool collision_Walls = false;
+		for (int i = 0; i < isleSIze; i++)
+		{
+			if (CheckAndHandleCollisionIsle(Car, isle[i], car_Radius, isle_width, isle_depth))
+				collision_Walls = true;
+		};
+
+		//resolving collision with Walls
+		if (collision_Walls)
+		{
+			momentum.x *= -1;
+			momentum.z *= -1;
+		};
 
 		//Get the facing vector form the model mattrix
 		Car->GetMatrix(&matrix[0][0]);  //get the model mattrix
 		facingVector = { matrix[2][0], matrix[2][2] }; //local z axis's x and z components
-
-		//Car Control
-		/////////////
 
 		//calculate thurst 
 		if (myEngine->KeyHeld(accelerate))
@@ -184,8 +262,8 @@ int main()
 		{
 			thurst = { 0.0f, 0.0f };
 		};
-		if (myEngine->KeyHeld(turnLeft)) Car->RotateY(-0.1f);
-		if (myEngine->KeyHeld(turnRight)) Car->RotateY(0.1f);
+		if (myEngine->KeyHeld(turnLeft)) Car->RotateY(-0.01f);
+		if (myEngine->KeyHeld(turnRight)) Car->RotateY(0.01f);
 
 		//calculate drag
 		drag = scalar(coeffitiantOfDrag, momentum);
@@ -259,20 +337,34 @@ int main()
 }
 
 
-bool CheckAndHandleCollision(Model* model1, Model* model2, float width, float depth, float radius, float marble_speed) {
+bool CheckAndHandleCollisionIsle(Model* car, Model* isle, float isle_width, float isle_depth, float Car_radius) {
 	// Calculate collision bounds
 	//sphere to box collision
-	float minX = model1->GetX() - (width / 2) - radius;
-	float maxX = model1->GetX() + (width / 2) + radius;
-	float minZ = model1->GetZ() - (depth / 2) - radius;
-	float maxZ = model1->GetZ() - (depth / 2) + radius;
+	float minX = isle->GetX() - (isle_width / 2) - Car_radius;
+	float maxX = isle->GetX() + (isle_width / 2) + Car_radius;
+	float minZ = isle->GetZ() - (isle_depth / 2) - Car_radius;
+	float maxZ = isle->GetZ() - (isle_depth / 2) + Car_radius;
 
 	return (
-		model2->GetX() > minX && model2->GetX() < maxX
-		&& model2->GetZ() > minZ && model2->GetZ() < maxZ
+		car->GetX() > minX && car->GetX() < maxX
+		&& car->GetZ() > minZ && car->GetZ() < maxZ
 		);
 };
 
+
+bool CheckAndHandleCollisionWalls(Model* car, Model* Wall, float Wall_width, float Wall_depth, float Car_radius) {
+	// Calculate collision bounds
+	//sphere to box collision
+	float minX = Wall->GetX() - (Wall_width / 2) - Car_radius;
+	float maxX = Wall->GetX() + (Wall_width / 2) + Car_radius;
+	float minZ = Wall->GetZ() - (Wall_depth / 2) - Car_radius;
+	float maxZ = Wall->GetZ() - (Wall_depth / 2) + Car_radius;
+
+	return (
+		car->GetX() > minX && car->GetX() < maxX
+		&& car->GetZ() > minZ && car->GetZ() < maxZ
+		);
+};
 
 
 
