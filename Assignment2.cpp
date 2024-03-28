@@ -2,18 +2,20 @@
 
 #include "TL-Engine11.h" // TL-Engine11 include file and namespace
 #include <string>
+#include <sstream>
+#include <cmath>
 using namespace tle;
 
-//float kGameSpeed = 1.0f; //All Movement is multiplied by this
-
 //Keyboard Controls
+ 
 //Car
 const EKeyCode accelerate = Key_W;
 const EKeyCode turnLeft = Key_A;
 const EKeyCode decelerate = Key_S;
 const EKeyCode turnRight = Key_D;
-const float ThurstFactor = 0.000005f;
+const float ThurstFactor = 0.0005f;
 const float coeffitiantOfDrag = -0.001;
+
 
 //Camera
 const EKeyCode toggleChaseCam = Key_1;
@@ -46,7 +48,6 @@ Vector2d addthere(Vector2d v1, Vector2d v2, Vector2d v3) {
 bool CheckAndHandleCollisionIsle(Model* car, Model* isle, float isle_width, float isle_depth, float Car_radius);
 bool CheckAndHandleCollisionWalls(Model* car, Model* Wall, float Wall_width, float Wall_depth, float Car_radius);
 
-
 int main()
 {
 	// Create a 3D engine (using TL11 engine here) and open a window for it
@@ -60,13 +61,14 @@ int main()
 	/**** Set up your scene here ****/
 	float frameRate = myEngine->FrameTime();
 
-	//states
-	enum GameStates { Start, Countdown, Ready };
+	//states 
+	enum GameStates { Start, Countdown, Ready, Race_state };
 	GameStates gameState = Start;
 
 	//Fonts and spites
 	IFont* myFont = myEngine->LoadFont("Times New Roman", 80);
-	Sprite* mySpite = myEngine->CreateSprite("ui_backdrop.jpg", 0.0f, 800.0f);
+	IFont* myFont2 = myEngine->LoadFont("Arial", 25);
+	Sprite* mySpite = myEngine->CreateSprite("ui_backdrop.jpg", 0.0f, 720.0f);
 
 	//Cameara Control
 	const float KCameraMove = frameRate * 1;
@@ -95,6 +97,8 @@ int main()
 	Vector2d facingVector = { 0.0f, 1.0f };
 	float matrix[4][4]; //place to store the model matrix
 
+	float Car_distance = 0.0f; //for calculating the distance of the car
+
 	//checkpoints
 	const int CheckPointSize = 3;
 	const float CheckPointRotate = 90.0f;
@@ -104,6 +108,11 @@ int main()
 	const float CheckPountY[CheckPointSize] = { 0, 0, 0 };
 	const float CheckPointX[CheckPointSize] = { 0, 10, 45 };
 	const float CheckPointZ[CheckPointSize] = { 0, 120, 56 };
+
+	//checkpoints depth and width
+	const float CheckWidth = 10.0f;
+	const float CheckDepth = 10.0f;
+
 
 	for (int i = 0; i < CheckPointSize; i++)
 	{
@@ -132,7 +141,6 @@ int main()
 	};
 
 	//walls
-
 	const float Wall_depth = 2.5f;
 	const float Wall_width = 2.5f;
 
@@ -154,8 +162,16 @@ int main()
 	};
 
 	//Floor
-	IMesh* GroundMesh = myEngine->LoadMesh("ground.x");
+	IMesh* GroundMesh = myEngine->LoadMesh("Ground.x");
 	IModel* ground = GroundMesh->CreateModel();
+
+	//Cross1
+	IMesh* CrossMesh = myEngine->LoadMesh("Cross.x");
+	IModel* Cross = CrossMesh->CreateModel(0 , -20, 0);
+
+	//cross2
+	IMesh* CrossMesh2 = myEngine->LoadMesh("Cross.x");
+	IModel* Cross2 = CrossMesh2->CreateModel(0, -20, 0);
 
 	//mouse
 	int mouseMoveX = 0;
@@ -215,115 +231,119 @@ int main()
 			};
 		};
 
-		//Collision with isles
-		bool collision_isle = false;
-		for (int i = 0; i < isleSIze; i++)
-		{
-			if (CheckAndHandleCollisionIsle(Car, Wall[i], car_Radius, Wall_width, Wall_depth))
-				collision_isle = true;
-		};
+		if (gameState == Ready) {
 
-		//resolving collision with isle
-		if (collision_isle)
-		{
-			momentum.x *= -1;
-			momentum.z *= -1;
-		};
+			elaspeedTime += frameTime;
+			myFont2->Draw("Time : "+std::to_string(round(elaspeedTime * 100) / 100), 50, 720, kWhite);
 
-		//Collision with walls
-		bool collision_Walls = false;
-		for (int i = 0; i < isleSIze; i++)
-		{
-			if (CheckAndHandleCollisionIsle(Car, isle[i], car_Radius, isle_width, isle_depth))
-				collision_Walls = true;
-		};
+			//Get the facing vector form the model mattrix
+			Car->GetMatrix(&matrix[0][0]);  //get the model mattrix
+			facingVector = { matrix[2][0], matrix[2][2] }; //local z axis's x and z components
 
-		//resolving collision with Walls
-		if (collision_Walls)
-		{
-			momentum.x *= -1;
-			momentum.z *= -1;
-		};
-
-		//Get the facing vector form the model mattrix
-		Car->GetMatrix(&matrix[0][0]);  //get the model mattrix
-		facingVector = { matrix[2][0], matrix[2][2] }; //local z axis's x and z components
-
-		//calculate thurst 
-		if (myEngine->KeyHeld(accelerate))
-		{
-			thurst = scalar(ThurstFactor, facingVector);
-		}
-		else if (myEngine->KeyHeld(decelerate))
-		{
-			thurst = scalar(-ThurstFactor, facingVector);
-		}
-		else
-		{
-			thurst = { 0.0f, 0.0f };
-		};
-		if (myEngine->KeyHeld(turnLeft)) Car->RotateY(-0.01f);
-		if (myEngine->KeyHeld(turnRight)) Car->RotateY(0.01f);
-
-		//calculate drag
-		drag = scalar(coeffitiantOfDrag, momentum);
-
-		//calculate new momentum
-		momentum = addthere(momentum, drag, thurst);
-
-		//Move Car
-		Car->Move(momentum.x, 0.0f, momentum.z);
-
-		//Cameara Control
-		/////////////////
-
-		//keyboard controlled camera movement
-		if (myEngine->KeyHeld(camUp)) camera->MoveLocalZ(KCameraMove);
-		if (myEngine->KeyHeld(camDown)) camera->MoveLocalZ(-KCameraMove);
-		if (myEngine->KeyHeld(camRight)) camera->MoveLocalX(KCameraMove);
-		if (myEngine->KeyHeld(camLeft)) camera->MoveLocalX(-KCameraMove);
-
-		////toggle chase cam mode
-		if (myEngine->KeyHit(toggleChaseCam))
-		{
-			ChaseCamActive = !ChaseCamActive; //making it true
-			if (ChaseCamActive)
+			//calculate thurst 
+			if (myEngine->KeyHeld(accelerate))
 			{
-				//camera->AttachToParent(Car);
-				camera->SetPosition(CameraX, CameraY, CameraZ);
+				thurst = scalar(ThurstFactor, facingVector);
 			}
-		};
-
-		////mouse controlled camera movement
-		if (mouseCaptureActive && !ChaseCamActive)
-		{
-			mouseMoveX += myEngine->GetMouseMovementX(); //maintain movemnet
-			mouseMoveY += myEngine->GetMouseMovementY();
-
-			camera->ResetOrientation(); //reset cameara before moving
-			camera->RotateLocalY(mouseMoveX * KMouseRotation); //the mouse rotation reduces rotation speed
-			camera->RotateLocalX(mouseMoveX * KMouseRotation);
-
-			float mouseMoveWheel = myEngine->GetMouseWheelMovement();
-			camera->MoveLocalZ(mouseMoveWheel * KMouseWheelMove);
-		};
-
-		//toggle mouse capture mode
-		if (myEngine->KeyHit(toggleMouseCapture))
-		{
-			mouseCaptureActive = !mouseCaptureActive;
-			if (mouseCaptureActive)
+			else if (myEngine->KeyHeld(decelerate))
 			{
-				myEngine->StartMouseCapture();
-				!mouseCaptureActive;
+				thurst = scalar(-ThurstFactor, facingVector);
 			}
 			else
 			{
-				myEngine->StopMouseCapture();
-			}
+				thurst = { 0.0f, 0.0f };
+			};
+			if (myEngine->KeyHeld(turnLeft)) Car->RotateY(-0.1f);
+			if (myEngine->KeyHeld(turnRight)) Car->RotateY(0.1f);
+
+			//calculate drag
+			drag = scalar(coeffitiantOfDrag, momentum);
+
+			//calculate new momentum
+			momentum = addthere(momentum, drag, thurst);
+
+			//Move Car
+			Car->Move(momentum.x, 0.0f, momentum.z);
+
+			//Collision with isles
+			bool collision_isle = false;
+			for (int i = 0; i < isleSIze; i++)
+			{
+				if (CheckAndHandleCollisionIsle(Car, Wall[i], car_Radius, Wall_width, Wall_depth))
+					collision_isle = true;
+			};
+
+			//resolving collision with isle
+			if (collision_isle)
+			{
+				momentum.x *= -1;
+				momentum.z *= -1;
+			};
+
+			//Collision with walls
+			bool collision_Walls = false;
+			for (int i = 0; i < isleSIze; i++)
+			{
+				if (CheckAndHandleCollisionIsle(Car, isle[i], car_Radius, isle_width, isle_depth))
+					collision_Walls = true;
+			};
+
+			//resolving collision with Walls
+			if (collision_Walls)
+			{
+				momentum.x *= -1;
+				momentum.z *= -1;
+			};
+
+			//Cameara Control
+			/////////////////
+
+			//keyboard controlled camera movement
+			if (myEngine->KeyHeld(camUp)) camera->MoveLocalZ(KCameraMove);
+			if (myEngine->KeyHeld(camDown)) camera->MoveLocalZ(-KCameraMove);
+			if (myEngine->KeyHeld(camRight)) camera->MoveLocalX(KCameraMove);
+			if (myEngine->KeyHeld(camLeft)) camera->MoveLocalX(-KCameraMove);
+
+			////toggle chase cam mode
+			if (myEngine->KeyHit(toggleChaseCam))
+			{
+				ChaseCamActive = !ChaseCamActive; //making it true
+				if (ChaseCamActive)
+				{
+					//camera->AttachToParent(Car);
+					camera->SetPosition(CameraX, CameraY, CameraZ);
+				}
+			};
+
+			////mouse controlled camera movement
+			if (mouseCaptureActive && !ChaseCamActive)
+			{
+				mouseMoveX += myEngine->GetMouseMovementX(); //maintain movemnet
+				mouseMoveY += myEngine->GetMouseMovementY();
+
+				camera->ResetOrientation(); //reset cameara before moving
+				camera->RotateLocalY(mouseMoveX * KMouseRotation); //the mouse rotation reduces rotation speed
+				camera->RotateLocalX(mouseMoveX * KMouseRotation);
+
+				float mouseMoveWheel = myEngine->GetMouseWheelMovement();
+				camera->MoveLocalZ(mouseMoveWheel * KMouseWheelMove);
+			};
+
+			//toggle mouse capture mode
+			if (myEngine->KeyHit(toggleMouseCapture))
+			{
+				mouseCaptureActive = !mouseCaptureActive;
+				if (mouseCaptureActive)
+				{
+					myEngine->StartMouseCapture();
+					!mouseCaptureActive;
+				}
+				else
+				{
+					myEngine->StopMouseCapture();
+				}
+			};
 		};
-
-
 
 		// Stop if the Escape key is pressed
 		if (myEngine->KeyHit(Key_Escape))
@@ -334,8 +354,7 @@ int main()
 
 	// Delete the 3D engine now we are finished with it
 	myEngine->Delete();
-}
-
+};
 
 bool CheckAndHandleCollisionIsle(Model* car, Model* isle, float isle_width, float isle_depth, float Car_radius) {
 	// Calculate collision bounds
@@ -362,52 +381,5 @@ bool CheckAndHandleCollisionWalls(Model* car, Model* Wall, float Wall_width, flo
 
 	return (
 		car->GetX() > minX && car->GetX() < maxX
-		&& car->GetZ() > minZ && car->GetZ() < maxZ
-		);
+		&& car->GetZ() > minZ && car->GetZ() < maxZ		);
 };
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
